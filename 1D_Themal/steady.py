@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 import utils as fea_utils
 
 
@@ -9,6 +8,7 @@ np.set_printoptions(precision=4)
 """Steady-state finite element simulation"""
 
 # Flags
+# NOTE: Set to False to ensure simulation matches tesxtbook
 apply_convection = False  # apply forced convection at tip of beam
 
 # Establish the total number of elements and nodes and beam length
