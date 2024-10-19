@@ -1,6 +1,6 @@
 import numpy as np
 import utils as fea_utils
-
+import json
 
 # Specify the precision of the print statement
 np.set_printoptions(precision=4)
@@ -184,4 +184,13 @@ print(steady_state_soln)
 print()
 
 # Plot result
-fea_utils.plot_steady_state_result(xloc, steady_state_soln)
+fea_utils.plot_steady(xloc, steady_state_soln)
+
+# Write solution to json
+save = steady_state_soln.tolist()
+with open("steady_state_soln.json", "w") as f:
+    json.dump(save, f)
+
+save = xloc.tolist()
+with open("xloc_steady.json", "w") as f:
+    json.dump(save, f)
