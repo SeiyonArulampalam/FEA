@@ -184,7 +184,7 @@ print(steady_state_soln)
 print()
 
 # Plot result
-fea_utils.plot_steady(xloc, steady_state_soln)
+fea_utils.plot_steady_txtbook(xloc, steady_state_soln)
 
 # Write solution to json
 save = steady_state_soln.tolist()
