@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import json
 
 """
 PDE: c1*∂u/∂t - ∂/∂x(a*∂u/∂x) + c0*u = g(x,t)
@@ -323,33 +324,219 @@ def Integrate_C(
     return I
 
 
-def plot_steady_state_result(xloc, steady_state_soln) -> None:
+def time_step(
+    simulation_time,
+    n_steps,
+    n_nodes,
+    Kmat,
+    Cmat,
+    Fvec,
+    alpha,
+    u_root,
+    apply_convection=False,
+):
     """
-    Plot the steady state FEA solution
+    _summary_
 
     Parameters
     ----------
-    xloc : array
-        Node coordinates
-    steady_state_soln : array
-        Temperature at each node
+    simulation_time : float
+        Total time to run unsteady simulation (seconds)
+    n_nodes : int
+        Total number of node in the mesh
+    n_steps : int
+        Total number of time steps
+    alpha : float
+         0.0 (Forward difference scheme),
+         0.5 (Crank-Nicolson scheme),
+         1.0 (backward difference scheme)
+    u_root : float
+        Temperature at the root of the beam
     """
-    # Define the exact solution from the textbook
-    xloc_nelems_2 = np.array([0.0, 0.025, 0.05])
-    xloc_nelems_4 = np.array([0.0, 0.0125, 0.025, 0.0375, 0.05])
-    soln_nelems_2 = np.array([300.0, 217.98, 192.83])
-    soln_nelems_4 = np.array([300.0, 251.52, 218.92, 200.16, 194.03])
+    # Compute number Δt (dt)
+    dt = simulation_time / n_steps
 
-    num_elems = len(xloc) - 1  # Compute the total number of elements
+    # Initialize solution shape (row = step, col = node temperature)
+    u = np.zeros((n_steps, n_nodes))
 
-    # Plot Results
+    # Enforce the root temeprature value at t=0
+    u[:, 0] = u_root
+
+    # Compute the time-stepping
+    a1 = alpha * dt
+    a2 = (1.0 - alpha) * dt
+    K_hat = Cmat + a1 * Kmat
+    K_bar = Cmat - a2 * Kmat
+
+    for i in range(1, n_steps):
+        # Extract the previous solution
+        u_prev = u[i - 1, :]
+        # print(f"{u_prev=}")
+
+        # Compute the RHS
+        RHS = K_bar @ u_prev
+
+        # print("K_hat old")
+        # print(K_hat)
+        # print(RHS)
+
+        # Dirichlet BC
+        # modify K_global to be a pivot
+        K_hat[0, 0] = 1.0
+        K_hat[0, 1:] = 0.0  # zero the 1st row of the K matrix
+
+        # modify the F_global due to dirichlet BC
+        RHS[0] = u_root
+        RHS[1:] = RHS[1:] - K_hat[1:, 0] * u_root
+
+        # Zero the 1st col of the K matrix
+        K_hat[1:, 0] = 0.0
+
+        # print(u_root)
+        # print("K_hat new")
+        # print(K_hat)
+        # print(RHS)
+
+        # Update solution
+        u_new = np.linalg.solve(K_hat, RHS)
+        u[i, :] = u_new
+        # print("u new")
+        # print(u_new)
+        # quit()
+    # print(u)
+    return u
+
+
+def plot_unsteady(
+    xloc,
+    unsteady_soln,
+    n_steps,
+) -> None:
+
+    steady_soln = json.load(open("steady_state_soln.json"))
+    xloc_steady = json.load(open("xloc_steady.json"))
+
     fig, ax = plt.subplots(nrows=1, ncols=1)
-    ax.plot(xloc_nelems_2, soln_nelems_2, "D", label="2 Elems. Txtbook")
-    ax.plot(xloc_nelems_4, soln_nelems_4, "x", label="4 Elems. Txtbook")
-    ax.plot(xloc, steady_state_soln, "k-", label="FEA")
     ax.set_xlabel("Location (m)")
     ax.set_ylabel("Temperature (C)")
-    ax.set_title(f"Steady-State Heat transfer simulation with {num_elems} elements")
-    plt.grid()
+    colors = plt.cm.coolwarm(np.linspace(0, 1, n_steps))
+
+    steps = np.linspace(0, n_steps - 1, n_steps).astype(int)
+    for i in steps:
+        ax.plot(
+            xloc,
+            unsteady_soln[i, :],
+            "-",
+            color=colors[i],
+            label=f"step = {i}",
+        )
+    ax.plot(xloc_steady, steady_soln, "k-")
+    num_elems = len(xloc) - 1
+    ax.set_title(f"Unsteady Heat transfer simulation with {num_elems} elements")
+    # plt.legend()
     plt.show()
-    # plt.savefig("steady.jpg", dpi=800)
+
+
+def assembleFEAmat(
+    g,
+    wts,
+    xi_pts,
+    jac_func,
+    shape_func_derivatives,
+    shape_func_vals,
+    num_elems,
+    num_nodes,
+    element_array,
+    a,
+    c0,
+    c1,
+    h_e,
+    element_node_tag_array,
+):
+    # Initialize the vectors and matrixes for the finite element analysis
+    K_global = np.zeros((num_nodes, num_nodes))
+    F_global = np.zeros(num_nodes)
+    C_global = np.zeros((num_nodes, num_nodes))
+
+    for e in range(num_elems):
+        # loop through each element and update the global matrix
+        x_left = element_array[e][1]
+        x_right = element_array[e][2]
+        x_vec = np.array([x_left, x_right])
+
+        K_local = np.zeros((2, 2))
+        for i in range(2):
+            for j in range(2):
+                K_local[i, j] = Integrate_K(
+                    wts,
+                    xi_pts,
+                    jac_func,
+                    shape_func_derivatives,
+                    shape_func_vals,
+                    x_vec,
+                    a,
+                    c0,
+                    i,
+                    j,
+                )
+                n_i_e = element_node_tag_array[e][i + 1]
+                n_j_e = element_node_tag_array[e][j + 1]
+                K_global[int(n_i_e), int(n_j_e)] += K_local[i, j]
+        # Compute analytical K
+        analyical_K = np.array(
+            [[1, -1], [-1, 1]],
+        ) * (a / h_e) + np.array(
+            [[2, 1], [1, 2]]
+        ) * (c0 * h_e / 6.0)
+
+        f_local = np.zeros(2)
+        for i in range(2):
+            f_local[i] = Integrate_f(
+                wts,
+                xi_pts,
+                jac_func,
+                shape_func_vals,
+                x_vec,
+                g[e],
+                i,
+            )
+            n_i_e = element_node_tag_array[e][i + 1]
+            F_global[int(n_i_e)] += f_local[i]
+
+        C_local = np.zeros((2, 2))
+        for i in range(2):
+            for j in range(2):
+                C_local[i, j] = Integrate_C(
+                    wts,
+                    xi_pts,
+                    jac_func,
+                    x_vec,
+                    shape_func_vals,
+                    c1,
+                    i,
+                    j,
+                )
+                n_i_e = element_node_tag_array[e][i + 1]
+                n_j_e = element_node_tag_array[e][j + 1]
+                C_global[int(n_i_e), int(n_j_e)] += C_local[i, j]
+        # Compute analytical C
+        analytical_C = np.array([[2, 1], [1, 2]]) * (c1 * h_e / 6.0)
+
+        # Check intergated matrices equals the expected analytical result
+        if np.allclose(analytical_C, C_local) != True:
+            raise Exception("Matrix C incorrectly computed")
+
+        if np.allclose(analyical_K, K_local) != True:
+            raise Exception("Matrix K incorrectly computed")
+
+    print("K matrix Unmodified:")
+    print(K_global)
+    print()
+    print("F vector Unmodified:")
+    print(F_global)
+    print()
+    print("C matrix Unmodified:")
+    print(C_global)
+    print()
+
+    return K_global, F_global, C_global
