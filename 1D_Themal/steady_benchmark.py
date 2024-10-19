@@ -64,11 +64,13 @@ def plot_steady_txtbook(
     """
     # Define the exact solution from the textbook
     if apply_convection == False:
+        fname = "steady"
         xloc_nelems_2 = np.array([0.0, 0.025, 0.05])
         xloc_nelems_4 = np.array([0.0, 0.0125, 0.025, 0.0375, 0.05])
         soln_nelems_2 = np.array([300.0, 217.98, 192.83])
         soln_nelems_4 = np.array([300.0, 251.52, 218.92, 200.16, 194.03])
     elif apply_convection == True:
+        fname = "steady_tip_convection"
         xloc_nelems_2 = np.array([0.0, 0.025, 0.05])
         xloc_nelems_4 = np.array([0.0, 0.0125, 0.025, 0.0375, 0.05])
         soln_nelems_2 = np.array([300.0, 211.97, 179.24])
@@ -87,13 +89,14 @@ def plot_steady_txtbook(
     ax.set_title(f"Steady-state heat transfer simulation with {num_elems} elements")
     plt.grid()
     plt.legend()
-    plt.savefig("steady.jpg", dpi=800)
+    dir = "/Users/seiyonarulampalam/git/FEA/1D_Themal/Figures"
+    plt.savefig(dir + "/" + fname + ".jpg", dpi=800)
     plt.show()
 
 
 # * Flags
 # NOTE: Set to False to ensure simulation matches tesxtbook
-apply_convection = True  # apply forced convection at tip of beam
+apply_convection = False  # apply forced convection at tip of beam
 
 # * Establish the total number of elements and nodes and beam length
 num_elems = 4
