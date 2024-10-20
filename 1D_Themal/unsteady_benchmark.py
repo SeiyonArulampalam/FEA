@@ -16,9 +16,52 @@ def cprint(flag, *args, **kwargs):
         print(*args, **kwargs)
 
 
-def plot_unsteady(xloc, unsteady_soln, n_steps, dt, apply_convection) -> None:
-    """Plot the unstady simulation for the entire beam"""
+def compute_steady_state_exact(L, k, u0, beta, apply_convection):
+    """
+    Compute the analytical solution to the steady-state heat equation
 
+    Parameters
+    ----------
+    L : float
+       Beam length (m)
+    k : float
+       Thermal conductivitty
+    u0 : float
+       Root temperature
+    beta : float
+        Heat transfer coefficient.
+    apply_convection : bool
+        Flag for whether forced convection was applied at the tip
+
+    Returns
+    -------
+    x : array
+        Coordinates at which the analytical solution was evaluated
+    u_exact : array
+        Analytical solution at each x coordinate
+    """
+    if apply_convection == False:
+        # Modify beta to equal zero if there is no convection at tip
+        beta = 0
+
+    x = np.linspace(0, L, 100)
+    m = 20
+    num = np.cosh(m * (L - x)) + (beta / (m * k) * np.sinh(m * (L - x)))
+    denom = np.cosh(m * L) + (beta / (m * k)) * np.sinh(m * L)
+    u_exact = u0 * np.divide(num, denom)
+    return x, u_exact
+
+
+def plot_unsteady(
+    xloc,
+    unsteady_soln,
+    n_steps,
+    dt,
+    apply_convection,
+    x_exact,
+    u_steady_exact,
+) -> None:
+    """Plot the unstady simulation for the entire beam"""
     # Import the steady state solution
     if apply_convection == True:
         steady_soln = json.load(open("steady_state_soln_convection.json"))
@@ -47,12 +90,18 @@ def plot_unsteady(xloc, unsteady_soln, n_steps, dt, apply_convection) -> None:
     # Plot the steady state simulation result
     ax.plot(xloc_steady, steady_soln, "ko", label="Steady-State")
 
+    # Plot the steady-state analytical result
+    ax.plot(x_exact, u_steady_exact, "g:")
     # Draw a red line for the legend
+    green_line = Line2D([0], [0], color="g", linestyle=":")
     black_dot = Line2D([0], [0], marker="o", color="black", linestyle="None")
     red_line = Line2D([0], [0], color="red")
 
     # Draw the legend
-    ax.legend([black_dot, red_line], ["Steady-State", "Transient"])
+    ax.legend(
+        [green_line, black_dot, red_line],
+        ["Analytical Steady-State", "Steady-State FEA", "Unsteady FEA"],
+    )
 
     # Define the title of the simulation
     ax.set_title(f"Unsteady FEA heat transfer: dt={dt:.2e}s, T={dt*n_steps:.1e}s")
@@ -212,7 +261,12 @@ u = fea_utils.time_step(
     apply_convection=False,
 )
 
+# * Compute the exact steady state simulation
+x_exact, u_steady_exact = compute_steady_state_exact(
+    L, k, u_root, beta, apply_convection
+)
+
 # * Plot simulation
 dt = time / n_steps
-plot_unsteady(xloc, u, n_steps, dt, apply_convection)
-# plot_tip(u, n_steps, dt, apply_convection)
+plot_unsteady(xloc, u, n_steps, dt, apply_convection, x_exact, u_steady_exact)
+plot_tip(u, n_steps, dt, apply_convection)
