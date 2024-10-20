@@ -17,21 +17,23 @@ def cprint(flag, *args, **kwargs):
 
 
 def plot_unsteady(xloc, unsteady_soln, n_steps, dt, apply_convection) -> None:
+    """Plot the unstady simulation for the entire beam"""
 
+    # Import the steady state solution
     if apply_convection == True:
         steady_soln = json.load(open("steady_state_soln_convection.json"))
         xloc_steady = json.load(open("xloc_convection.json"))
-        fname = "unsteady_tip_convection"
+        fname = "unsteady_convection"
     elif apply_convection == False:
         steady_soln = json.load(open("steady_state_soln.json"))
         xloc_steady = json.load(open("xloc.json"))
         fname = "unsteady"
 
     fig, ax = plt.subplots(nrows=1, ncols=1)
-    ax.set_xlabel("Location (m)")
-    ax.set_ylabel("Temperature (C)")
+
     colors = plt.cm.Reds(np.linspace(0, 1, n_steps))
 
+    # Plot the transient simulation result
     steps = np.linspace(0, n_steps - 1, n_steps).astype(int)
     for i in steps[0::10]:
         ax.plot(
@@ -41,6 +43,8 @@ def plot_unsteady(xloc, unsteady_soln, n_steps, dt, apply_convection) -> None:
             color=colors[i],
             # label=f"step = {i}",
         )
+
+    # Plot the steady state simulation result
     ax.plot(xloc_steady, steady_soln, "ko", label="Steady-State")
 
     # Draw a red line for the legend
@@ -53,6 +57,10 @@ def plot_unsteady(xloc, unsteady_soln, n_steps, dt, apply_convection) -> None:
     # Define the title of the simulation
     ax.set_title(f"Unsteady FEA heat transfer: dt={dt:.2e}s, T={dt*n_steps:.1e}s")
 
+    # Define the x and y axis
+    ax.set_xlabel("Location (m)")
+    ax.set_ylabel("Temperature (C)")
+
     # Save the figure
     dir = "/Users/seiyonarulampalam/git/FEA/1D_Themal/Figures"
     plt.savefig(dir + "/" + fname + ".jpg", dpi=800)
@@ -61,6 +69,9 @@ def plot_unsteady(xloc, unsteady_soln, n_steps, dt, apply_convection) -> None:
 
 
 def plot_tip(unsteady_soln, n_steps, dt, apply_convection):
+    """Plot the temperature at the tip of the beam"""
+
+    # Import the steady state solution
     if apply_convection == True:
         steady_soln = json.load(open("steady_state_soln_convection.json"))
         xloc_steady = json.load(open("xloc_convection.json"))
@@ -68,7 +79,27 @@ def plot_tip(unsteady_soln, n_steps, dt, apply_convection):
     elif apply_convection == False:
         steady_soln = json.load(open("steady_state_soln.json"))
         xloc_steady = json.load(open("xloc.json"))
-        fname = "unsteady"
+        fname = "unsteady_tip"
+
+    # Compute the steps array
+    steps = np.linspace(0, n_steps - 1, n_steps).astype(int)
+
+    # Plot the data
+    fig, ax = plt.subplots(nrows=1, ncols=1)
+    ax.plot(dt * steps, unsteady_soln[:, -1], "r-", label="Transient")
+    ax.plot(
+        [0, dt * n_steps], [steady_soln[-1], steady_soln[-1]], "k--", label="Steady"
+    )
+
+    # Define the x and y axis, and draw the legend
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel("Tip Temperature (C)")
+    ax.legend()
+
+    # Save the figure
+    dir = "/Users/seiyonarulampalam/git/FEA/1D_Themal/Figures"
+    plt.savefig(dir + "/" + fname + ".jpg", dpi=800)
+    plt.show()
 
 
 # * Flags
@@ -184,3 +215,4 @@ u = fea_utils.time_step(
 # * Plot simulation
 dt = time / n_steps
 plot_unsteady(xloc, u, n_steps, dt, apply_convection)
+# plot_tip(u, n_steps, dt, apply_convection)
