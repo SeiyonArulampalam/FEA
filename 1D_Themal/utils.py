@@ -355,6 +355,7 @@ def time_step(
     """
     # Compute number Δt (dt)
     dt = simulation_time / n_steps
+    print(f"{dt=:.2e}")
 
     # Initialize solution shape (row = step, col = node temperature)
     u = np.zeros((n_steps, n_nodes))
@@ -365,76 +366,35 @@ def time_step(
     # Compute the time-stepping
     a1 = alpha * dt
     a2 = (1.0 - alpha) * dt
-    K_hat = Cmat + a1 * Kmat
-    K_bar = Cmat - a2 * Kmat
+    K_hat_base = Cmat + a1 * Kmat
+    K_bar_base = Cmat - a2 * Kmat
 
     for i in range(1, n_steps):
+        # Initialize copy
+        K_hat = K_hat_base.copy()
+        K_bar = K_bar_base.copy()
+
         # Extract the previous solution
         u_prev = u[i - 1, :]
-        # print(f"{u_prev=}")
 
         # Compute the RHS
         RHS = K_bar @ u_prev
 
-        # print("K_hat old")
-        # print(K_hat)
-        # print(RHS)
-
         # Dirichlet BC
-        # modify K_global to be a pivot
         K_hat[0, 0] = 1.0
         K_hat[0, 1:] = 0.0  # zero the 1st row of the K matrix
 
-        # modify the F_global due to dirichlet BC
+        # Modify the RHS vector
         RHS[0] = u_root
         RHS[1:] = RHS[1:] - K_hat[1:, 0] * u_root
 
         # Zero the 1st col of the K matrix
         K_hat[1:, 0] = 0.0
 
-        # print(u_root)
-        # print("K_hat new")
-        # print(K_hat)
-        # print(RHS)
-
         # Update solution
         u_new = np.linalg.solve(K_hat, RHS)
         u[i, :] = u_new
-        # print("u new")
-        # print(u_new)
-        # quit()
-    # print(u)
     return u
-
-
-def plot_unsteady(
-    xloc,
-    unsteady_soln,
-    n_steps,
-) -> None:
-
-    steady_soln = json.load(open("steady_state_soln.json"))
-    xloc_steady = json.load(open("xloc_steady.json"))
-
-    fig, ax = plt.subplots(nrows=1, ncols=1)
-    ax.set_xlabel("Location (m)")
-    ax.set_ylabel("Temperature (C)")
-    colors = plt.cm.coolwarm(np.linspace(0, 1, n_steps))
-
-    steps = np.linspace(0, n_steps - 1, n_steps).astype(int)
-    for i in steps:
-        ax.plot(
-            xloc,
-            unsteady_soln[i, :],
-            "-",
-            color=colors[i],
-            label=f"step = {i}",
-        )
-    ax.plot(xloc_steady, steady_soln, "k-")
-    num_elems = len(xloc) - 1
-    ax.set_title(f"Unsteady Heat transfer simulation with {num_elems} elements")
-    # plt.legend()
-    plt.show()
 
 
 def assembleFEAmat(
@@ -529,14 +489,14 @@ def assembleFEAmat(
         if np.allclose(analyical_K, K_local) != True:
             raise Exception("Matrix K incorrectly computed")
 
-    print("K matrix Unmodified:")
-    print(K_global)
-    print()
-    print("F vector Unmodified:")
-    print(F_global)
-    print()
-    print("C matrix Unmodified:")
-    print(C_global)
-    print()
+    # print("K matrix Unmodified:")
+    # print(K_global)
+    # print()
+    # print("F vector Unmodified:")
+    # print(F_global)
+    # print()
+    # print("C matrix Unmodified:")
+    # print(C_global)
+    # print()
 
     return K_global, F_global, C_global
