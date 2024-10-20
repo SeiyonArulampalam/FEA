@@ -99,7 +99,7 @@ def plot_steady_txtbook(
 apply_convection = False  # apply forced convection at tip of beam
 
 # * Establish the total number of elements and nodes and beam length
-num_elems = 4
+num_elems = 20
 num_nodes = num_elems + 1
 L = 0.05  # length of beam [m]
 D = 0.02  # diameter of rod [m]
@@ -224,10 +224,17 @@ x_exact, u_exact = compute_analytical(L, k, u_root, beta, apply_convection)
 plot_steady_txtbook(xloc, u_fea, x_exact, u_exact, apply_convection)
 
 # *Write solution to json
+if apply_convection == True:
+    s1 = "steady_state_soln_convection.json"
+    s2 = "xloc_convection.json"
+elif apply_convection == False:
+    s1 = "steady_state_soln.json"
+    s2 = "xloc.json"
+
 save = u_fea.tolist()
-with open("steady_state_soln.json", "w") as f:
+with open(s1, "w") as f:
     json.dump(save, f)
 
 save = xloc.tolist()
-with open("xloc_steady.json", "w") as f:
+with open(s2, "w") as f:
     json.dump(save, f)
