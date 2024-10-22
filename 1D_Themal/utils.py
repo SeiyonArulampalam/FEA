@@ -333,27 +333,11 @@ def time_step(
     Fvec,
     alpha,
     u_root,
-    apply_convection=False,
+    beta,
+    A,
+    apply_convection,
 ):
-    """
-    _summary_
-
-    Parameters
-    ----------
-    simulation_time : float
-        Total time to run unsteady simulation (seconds)
-    n_nodes : int
-        Total number of node in the mesh
-    n_steps : int
-        Total number of time steps
-    alpha : float
-         0.0 (Forward difference scheme),
-         0.5 (Crank-Nicolson scheme),
-         1.0 (backward difference scheme)
-    u_root : float
-        Temperature at the root of the beam
-    """
-    # Compute number Δt (dt)
+    # Compute Δt (dt)
     dt = simulation_time / n_steps
     print(f"{dt=:.2e}")
 
@@ -363,19 +347,27 @@ def time_step(
     # Enforce the root temeprature value at t=0
     u[:, 0] = u_root
 
-    # Compute the time-stepping
+    # Compute the time-stepping coefficiencts
     a1 = alpha * dt
     a2 = (1.0 - alpha) * dt
-    K_hat_base = Cmat + a1 * Kmat
-    K_bar_base = Cmat - a2 * Kmat
 
+    # Compute the modified stifness matrices
+    K_hat_base = Cmat + a2 * Kmat
+    K_bar_base = Cmat - a1 * Kmat
+
+    # Step through each time-step
     for i in range(1, n_steps):
+        # Extract the previous solution
+        u_prev = u[i - 1, :]
+
         # Initialize copy
         K_hat = K_hat_base.copy()
         K_bar = K_bar_base.copy()
 
-        # Extract the previous solution
-        u_prev = u[i - 1, :]
+        # Apply Convection
+        if apply_convection == True:
+            K_hat[-1, -1] += a1 * beta * A
+            K_bar[-1, -1] -= a2 * beta * A
 
         # Compute the RHS
         RHS = K_bar @ u_prev
