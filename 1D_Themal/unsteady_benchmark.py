@@ -114,7 +114,7 @@ def plot_unsteady(
     dir = "/Users/seiyonarulampalam/git/FEA/1D_Themal/Figures"
     plt.savefig(dir + "/" + fname + ".jpg", dpi=800)
 
-    plt.show()
+    # plt.show()
 
 
 def plot_tip(unsteady_soln, n_steps, dt, apply_convection):
@@ -141,23 +141,25 @@ def plot_tip(unsteady_soln, n_steps, dt, apply_convection):
     )
 
     # Define the x and y axis, and draw the legend
+    ax.set_ylim([0, 200])
     ax.set_xlabel("Time (s)")
     ax.set_ylabel("Tip Temperature (C)")
     ax.legend()
 
+    plt.grid()
+
     # Save the figure
     dir = "/Users/seiyonarulampalam/git/FEA/1D_Themal/Figures"
     plt.savefig(dir + "/" + fname + ".jpg", dpi=800)
-    plt.show()
+    # plt.show()
 
 
 # * Flags
-# NOTE: Set to False to ensure simulation matches tesxtbook
 apply_convection = False  # apply forced convection at tip of beam
 flag_print = False
 
 # * Establish the total number of elements and nodes and beam length
-num_elems = 8
+num_elems = 20
 num_nodes = num_elems + 1
 L = 0.05  # length of beam [m]
 D = 0.02  # diameter of rod [m]
@@ -247,7 +249,7 @@ K_global, F_global, C_global = fea_utils.assembleFEAmat(
 
 # * Simulate time-march
 dt = 1e-3
-time = 0.5
+time = 1.0
 n_steps = int(time / dt)
 u = fea_utils.time_step(
     simulation_time=time,
@@ -258,7 +260,9 @@ u = fea_utils.time_step(
     Fvec=F_global,
     alpha=0.5,
     u_root=u_root,
-    apply_convection=False,
+    beta=beta,
+    A=A,
+    apply_convection=apply_convection,
 )
 
 # * Compute the exact steady state simulation
