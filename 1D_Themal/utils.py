@@ -407,7 +407,7 @@ def time_march(
             K_bar[-1, -1] -= a2 * beta * A
 
         # Compute the RHS
-        RHS = K_bar @ u_prev
+        RHS = (K_bar @ u_prev) + a1 * Fvec + a2 * Fvec
 
         # Dirichlet BC
         K_hat[0, 0] = 1.0
@@ -529,3 +529,36 @@ def assembleFEAmat(
     # print()
 
     return K_global, F_global, C_global
+
+
+def solve_steady_state(K_global, F_global, u_root, beta, A, apply_convection):
+    # * Apply Dirichlet B.C.
+    # modify K_global to be a pivot
+    K_global[0, 0] = 1.0
+    K_global[0, 1:] = 0.0  # zero the 1st row of the K matrix
+
+    # modify the F_global due to dirichlet BC
+    F_global[0] = u_root
+    F_global[1:] = F_global[1:] - K_global[1:, 0] * u_root
+
+    # Zero the 1st col of the K matrix
+    K_global[1:, 0] = 0.0
+
+    # * Apply convection BC at beam tip
+    if apply_convection == True:
+        K_global[-1, -1] += beta * A
+
+    print("K matrix Modified:")
+    print(K_global)
+    print()
+    print("F vector Modified:")
+    print(F_global)
+    print()
+
+    # * Solve system fo Equations
+    u_fea = np.linalg.solve(K_global, F_global)
+    print("Solution Steady State:")
+    print(u_fea)
+    print()
+
+    return u_fea
