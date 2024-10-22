@@ -114,8 +114,6 @@ def plot_unsteady(
     dir = "/Users/seiyonarulampalam/git/FEA/1D_Themal/Figures"
     plt.savefig(dir + "/" + fname + ".jpg", dpi=800)
 
-    # plt.show()
-
 
 def plot_tip(unsteady_soln, n_steps, dt, apply_convection):
     """Plot the temperature at the tip of the beam"""
@@ -151,12 +149,14 @@ def plot_tip(unsteady_soln, n_steps, dt, apply_convection):
     # Save the figure
     dir = "/Users/seiyonarulampalam/git/FEA/1D_Themal/Figures"
     plt.savefig(dir + "/" + fname + ".jpg", dpi=800)
-    # plt.show()
 
 
 # * Flags
-apply_convection = False  # apply forced convection at tip of beam
+apply_convection = True  # apply forced convection at tip of beam
 flag_print = False
+print("------------------------------------------------")
+print("Apply Conection to Beam Tip = ", apply_convection)
+print("------------------------------------------------")
 
 # * Establish the total number of elements and nodes and beam length
 num_elems = 20
@@ -251,7 +251,7 @@ K_global, F_global, C_global = fea_utils.assembleFEAmat(
 dt = 1e-3
 time = 1.0
 n_steps = int(time / dt)
-u = fea_utils.time_step(
+u = fea_utils.time_march(
     simulation_time=time,
     n_steps=n_steps,
     n_nodes=num_nodes,
@@ -274,3 +274,4 @@ x_exact, u_steady_exact = compute_steady_state_exact(
 dt = time / n_steps
 plot_unsteady(xloc, u, n_steps, dt, apply_convection, x_exact, u_steady_exact)
 plot_tip(u, n_steps, dt, apply_convection)
+plt.show()

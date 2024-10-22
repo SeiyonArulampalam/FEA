@@ -324,7 +324,7 @@ def Integrate_C(
     return I
 
 
-def time_step(
+def time_march(
     simulation_time,
     n_steps,
     n_nodes,
@@ -337,6 +337,43 @@ def time_step(
     A,
     apply_convection,
 ):
+    """
+    Direct numerical integration of the semi-discrete FE system.
+
+    Parameters
+    ----------
+    simulation_time : float
+       Total simulation time
+    n_steps : int
+       Number of steps to take in the simulation
+    n_nodes : int
+       Number of nodes in the mesh
+    Kmat :  2d array
+       Original K matrix for the system
+    Cmat : 2d array
+       Original C matrix for the system
+    Fvec : vector
+       Orifinagl F vector for the system
+    alpha : float
+       Parameter to tune the solver
+       0 = Forward difference,
+       0.5 = Crank-Nicolson (Stable),
+       1.0 = Backward difference
+    u_root : float
+       Temperature of root above the reference temp
+    beta : float
+       Heat trasnfer coefficient
+    A : float
+       Cross sectional area
+    apply_convection : bool
+       Flag to enable convection BC modification to system
+
+    Returns
+    -------
+    u : 2d array
+       Time history solution to the system.
+       Each row corresopnds to the solution to a time-step.
+    """
     # Compute Δt (dt)
     dt = simulation_time / n_steps
     print(f"{dt=:.2e}")
