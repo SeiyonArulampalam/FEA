@@ -112,7 +112,7 @@ def plot_unsteady(
     plt.grid()
 
     # Save the figure
-    dir = "/Users/seiyonarulampalam/git/FEA/1D_Themal/Figures"
+    dir = "/Users/seiyonarulampalam/git/FEA/1DThermal/Figures"
     plt.savefig(dir + "/" + fname + ".jpg", dpi=800)
 
 
@@ -148,12 +148,12 @@ def plot_tip(unsteady_soln, n_steps, dt, apply_convection):
     plt.grid()
 
     # Save the figure
-    dir = "/Users/seiyonarulampalam/git/FEA/1D_Themal/Figures"
+    dir = "/Users/seiyonarulampalam/git/FEA/1DThermal/Figures"
     plt.savefig(dir + "/" + fname + ".jpg", dpi=800)
 
 
 # * Flags
-apply_convection = False  # apply forced convection at tip of beam
+apply_convection = True  # apply forced convection at tip of beam
 flag_print = False
 print("------------------------------------------------")
 print("Apply Conection to Beam Tip = ", apply_convection)

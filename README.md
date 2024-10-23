@@ -1,2 +1,0 @@
-# FEA
-FEA code testbed.

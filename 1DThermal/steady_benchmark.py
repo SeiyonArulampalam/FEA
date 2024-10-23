@@ -89,7 +89,7 @@ def plot_steady_txtbook(
     ax.set_title(f"Steady-state heat transfer simulation with {num_elems} elements")
     plt.grid()
     plt.legend()
-    dir = "/Users/seiyonarulampalam/git/FEA/1D_Themal/Figures"
+    dir = "/Users/seiyonarulampalam/git/FEA/1DThermal/Figures"
     plt.savefig(dir + "/" + fname + ".jpg", dpi=800)
     plt.show()
 

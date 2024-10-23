@@ -109,12 +109,12 @@ def plot(
     cbar.set_label("Time (s)")
 
     plt.suptitle(f"Simulation: {num_elems} elements, convection = {apply_convection}")
-    dir = "/Users/seiyonarulampalam/git/FEA/1D_Themal/Figures"
+    dir = "/Users/seiyonarulampalam/git/FEA/1DThermal/Figures"
     plt.savefig(dir + "/" + fname + ".jpg", dpi=800)
 
 
 # * Flags
-apply_convection = False  # apply forced convection at tip of beam
+apply_convection = True  # apply forced convection at tip of beam
 
 # * Establish the total number of elements and nodes and beam length
 num_elems = 20
