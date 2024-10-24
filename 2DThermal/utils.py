@@ -95,13 +95,14 @@ def generate_mesh(lenght=1.0, height=1.0, open_gmsh=True):
     gmsh.model.add("geometry_gmsh")
 
     # Define the mesh refinement at nodes
-    lc1 = 1e-2
+    lc1 = 0.1e-1
+    lc = 0.1e-1
 
     # Define the nodes that define the boundary
     gmsh.model.geo.addPoint(0.0, 0.0, 0, lc1, 0)
     gmsh.model.geo.addPoint(lenght, 0.0, 0, lc1, 1)
-    gmsh.model.geo.addPoint(lenght, height, 0, lc1, 2)
-    gmsh.model.geo.addPoint(0.0, height, 0, lc1, 3)
+    gmsh.model.geo.addPoint(lenght, height, 0, lc, 2)
+    gmsh.model.geo.addPoint(0.0, height, 0, lc, 3)
 
     # Draw the lines that connect points.
     gmsh.model.geo.addLine(0, 1, 1)
@@ -219,24 +220,26 @@ def Integrate_f_i(wts, xi_eta, jac_func, shape_func_vals, x_vec, y_vec, g_e, i):
     return I
 
 
-def Integrate_P_i(wts, xi_pts, jac_func, shape_func_vals, x_vec, beta, T_ambient, i):
+def Integrate_P_i(
+    wts, xi_pts, jac_func, shape_func_vals, x_vec, y_vec, beta, T_ambient, i
+):
     I = 0.0
     for k in range(len(wts)):
         weight = wts[k]  # quadrature weight
         xi = xi_pts[k]  # quadrature point
-        jac = jac_func(x_vec)
+        jac = jac_func(x_vec, y_vec)
         N = shape_func_vals(xi)
         comp1 = beta * T_ambient * N[i]
         I += weight * comp1 * jac
     return I
 
 
-def Integrate_Q_i(wts, xi_pts, jac_func, shape_func_vals, x_vec, q_hat, i):
+def Integrate_Q_i(wts, xi_pts, jac_func, shape_func_vals, x_vec, y_vec, q_hat, i):
     I = 0.0
     for k in range(len(wts)):
         weight = wts[k]  # quadrature weight
         xi = xi_pts[k]  # quadrature point
-        jac = jac_func(x_vec)
+        jac = jac_func(x_vec, y_vec)
         N = shape_func_vals(xi)
         comp1 = q_hat * N[i]
         I += weight * comp1 * jac
@@ -408,6 +411,50 @@ def assemble_H(
     return H
 
 
+def assemble_analytical_H(
+    beta,
+    num_nodes,
+    nodeCoords,
+    convection_bc_tags,
+):
+    H = np.zeros((num_nodes, num_nodes))
+    n_line_segs = len(convection_bc_tags) - 1
+
+    for segment_i in range(n_line_segs):
+        # Extract the left and right end node tags for the line segment
+        n1 = int(convection_bc_tags[segment_i]) - 1  # Left node
+        n2 = int(convection_bc_tags[segment_i + 1]) - 1  # Right node
+        segment_node_tags = [n1, n2]
+
+        # Extract the x and y coordinates for each node
+        n1_x = nodeCoords[n1 * 3]
+        n1_y = nodeCoords[n1 * 3 + 1]
+        n2_x = nodeCoords[n2 * 3]
+        n2_y = nodeCoords[n2 * 3 + 1]
+
+        # x and y vectors
+        x_vec = [n1_x, n2_x]
+        y_vec = [n1_y, n2_y]
+
+        # Compute length of line segment
+        l_e = np.sqrt(np.power(n2_x - n1_x, 2) + np.power(n2_y - n1_y, 2))
+
+        # Initialize K_local
+        H_local = np.zeros((2, 2))
+        for i in range(2):
+            for j in range(2):
+                if i == j:
+                    delta_ij = 1.0
+                elif i != j:
+                    delta_ij = 0.0
+                H_local[i, j] = beta * (l_e / 6.0) * (1 + delta_ij)
+
+                n_row_e = int(segment_node_tags[i])  # Global row index
+                n_col_e = int(segment_node_tags[j])  # Global col index
+                H[int(n_row_e), int(n_col_e)] += H_local[i, j]
+    return H
+
+
 def assemble_f(
     wts,
     xi_eta,
@@ -489,9 +536,198 @@ def assemble_analytical_f(g, num_elems, num_nodes, elemNodeTags, nodeCoords):
     return f
 
 
-def assemble_P():
-    pass
+def assemble_P(
+    wts,
+    xi_pts,
+    jac_func,
+    shape_func_vals,
+    beta,
+    T_ambient,
+    num_nodes,
+    nodeCoords,
+    convection_bc_tags,
+):
+    n_line_segs = len(convection_bc_tags) - 1
+    P = np.zeros(num_nodes)
+    for segment_i in range(n_line_segs):
+        # Extract the left and right end node tags for the line segment
+        n1 = int(convection_bc_tags[segment_i]) - 1  # Left node
+        n2 = int(convection_bc_tags[segment_i + 1]) - 1  # Right node
+        segment_node_tags = [n1, n2]
+
+        # Extract the x and y coordinates for each node
+        n1_x = nodeCoords[n1 * 3]
+        n1_y = nodeCoords[n1 * 3 + 1]
+        n2_x = nodeCoords[n2 * 3]
+        n2_y = nodeCoords[n2 * 3 + 1]
+
+        # x and y vectors
+        x_vec = [n1_x, n2_x]
+        y_vec = [n1_y, n2_y]
+
+        P_local = np.zeros(2)
+        for i in range(2):
+            P_local[i] = Integrate_P_i(
+                wts=wts,
+                xi_pts=xi_pts,
+                jac_func=jac_func,
+                shape_func_vals=shape_func_vals,
+                x_vec=x_vec,
+                y_vec=y_vec,
+                beta=beta,
+                T_ambient=T_ambient,
+                i=i,
+            )
+            n_row_e = int(segment_node_tags[i])  # Global row index
+            P[n_row_e] += P_local[i]
+    return P
 
 
-def assemble_Q():
-    pass
+def assemble_analytical_P(
+    beta,
+    T_ambient,
+    num_nodes,
+    nodeCoords,
+    convection_bc_tags,
+):
+    n_line_segs = len(convection_bc_tags) - 1
+    P = np.zeros(num_nodes)
+    for segment_i in range(n_line_segs):
+        # Extract the left and right end node tags for the line segment
+        n1 = int(convection_bc_tags[segment_i]) - 1  # Left node
+        n2 = int(convection_bc_tags[segment_i + 1]) - 1  # Right node
+        segment_node_tags = [n1, n2]
+
+        # Extract the x and y coordinates for each node
+        n1_x = nodeCoords[n1 * 3]
+        n1_y = nodeCoords[n1 * 3 + 1]
+        n2_x = nodeCoords[n2 * 3]
+        n2_y = nodeCoords[n2 * 3 + 1]
+
+        # Compute length of line segment
+        l_e = np.sqrt(np.power(n2_x - n1_x, 2) + np.power(n2_y - n1_y, 2))
+
+        P_local = np.zeros(2)
+        for i in range(2):
+            P_local[i] = beta * T_ambient * l_e * 0.5
+            n_row_e = int(segment_node_tags[i])  # Global row index
+            P[n_row_e] += P_local[i]
+    return P
+
+
+def assemble_Q(
+    wts,
+    xi_pts,
+    jac_func,
+    shape_func_vals,
+    q_hat,
+    num_nodes,
+    nodeCoords,
+    convection_bc_tags,
+):
+    n_line_segs = len(convection_bc_tags) - 1
+
+    Q = np.zeros(num_nodes)
+    for segment_i in range(n_line_segs):
+        # Extract the left and right end node tags for the line segment
+        n1 = int(convection_bc_tags[segment_i]) - 1  # Left node
+        n2 = int(convection_bc_tags[segment_i + 1]) - 1  # Right node
+        segment_node_tags = [n1, n2]
+
+        # Extract the x and y coordinates for each node
+        n1_x = nodeCoords[n1 * 3]
+        n1_y = nodeCoords[n1 * 3 + 1]
+        n2_x = nodeCoords[n2 * 3]
+        n2_y = nodeCoords[n2 * 3 + 1]
+
+        # x and y vectors
+        x_vec = [n1_x, n2_x]
+        y_vec = [n1_y, n2_y]
+
+        Q_local = np.zeros(2)
+        for i in range(2):
+            Q_local[i] = Integrate_Q_i(
+                wts=wts,
+                xi_pts=xi_pts,
+                jac_func=jac_func,
+                shape_func_vals=shape_func_vals,
+                x_vec=x_vec,
+                y_vec=y_vec,
+                q_hat=q_hat,
+                i=i,
+            )
+            n_row_e = int(segment_node_tags[i])  # Global row index
+            Q[n_row_e] += Q_local[i]
+    return Q
+
+
+def assemble_analytical_Q(
+    q_hat,
+    num_nodes,
+    nodeCoords,
+    convection_bc_tags,
+):
+
+    n_line_segs = len(convection_bc_tags) - 1
+    Q = np.zeros(num_nodes)
+    for segment_i in range(n_line_segs):
+        # Extract the left and right end node tags for the line segment
+        n1 = int(convection_bc_tags[segment_i]) - 1  # Left node
+        n2 = int(convection_bc_tags[segment_i + 1]) - 1  # Right node
+        segment_node_tags = [n1, n2]
+
+        # Extract the x and y coordinates for each node
+        n1_x = nodeCoords[n1 * 3]
+        n1_y = nodeCoords[n1 * 3 + 1]
+        n2_x = nodeCoords[n2 * 3]
+        n2_y = nodeCoords[n2 * 3 + 1]
+
+        # Compute length of line segment
+        l_e = np.sqrt(np.power(n2_x - n1_x, 2) + np.power(n2_y - n1_y, 2))
+
+        Q_local = np.zeros(2)
+        for i in range(2):
+            Q_local[i] = q_hat * l_e * 0.5
+            n_row_e = int(segment_node_tags[i])  # Global row index
+            Q[n_row_e] += Q_local[i]
+    return Q
+
+
+def apply_dirichlet_bc(K_global, b_global, numNodes, nodesBC, u_hat):
+    """
+    Implement the dirichlet BC at the specified nodes.
+
+    Parameters
+    ----------
+        K_global : array
+            Unmodified stiffnes matrix
+        b_global : array
+            Forcing function vector
+        nodesBC : array
+            Vector of dirichlect BC node tags
+        numNodes : array
+            Total number of nodes (int)
+        p_i : float
+            The value at the specified BC node tags (double)
+
+    Returns
+    -------
+        K_global : array
+            modified stiffness matrix
+        b_gloabl : array
+            modified forcing vector
+    """
+    for i in range(len(nodesBC)):
+        # loop through each node BC will be applied to
+        nd_i = int(nodesBC[i] - 1)
+        # print(f"BC global node : {nd_i+1}, phi : {p_i}") # matches figure count
+        for j in range(numNodes):
+            # print(j)
+            if nd_i == j:
+                K_global[j, j] = 1.0
+                b_global[j] = u_hat
+            else:
+                b_global[j] -= K_global[j, nd_i] * u_hat
+                K_global[nd_i, j] = 0.0
+                K_global[j, nd_i] = 0.0
+    return K_global, b_global
