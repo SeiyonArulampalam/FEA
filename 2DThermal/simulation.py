@@ -28,13 +28,13 @@ else:
     q_hat = 0.0  # Heat flux on convection boundary
 T_ambient = 20.0  # Ambient temperature [C]
 u_hat = 300.0  # Temperature on dirichlet boundary [C]
-
+c1 = 1.0
 
 # * Generate the mesh
 height = 1.0  # Length of analysis domain [m]
 length = 1.0  # Height analysis domain [m]
-lc1 = 0.3e-1  # Mesh refinement of nodes on base
-lc = 0.8e-1  # Mesh refinement of nodes on top edge
+lc1 = 0.6e-1  # Mesh refinement of nodes on base
+lc = 1e-1  # Mesh refinement of nodes on top edge
 mesh_info = utils.generate_mesh(
     lenght=length,
     height=height,
@@ -76,6 +76,7 @@ if apply_convection == False:
     dirichlet_bc_tags.extend(nodeTags_s2)
     dirichlet_bc_tags.extend(nodeTags_s3)
     dirichlet_bc_tags.extend(nodeTags_s4)
+
 
 # Case 2
 elif apply_convection == True:
@@ -129,7 +130,7 @@ K_analytical = utils.assemble_analytical_K(
     nodeCoords=nodeCoords,
 )
 
-# Check is K and K_analytical are close
+# Check if K and K_analytical are close
 if not np.allclose(K, K_analytical):
     raise ValueError("ERROR: K and K_analytical do not match")
 else:
@@ -148,6 +149,8 @@ H = utils.assemble_H(
     nodeCoords=nodeCoords,
     convection_bc_tags=convection_bc_tags,
 )
+
+# Assemble H analytically
 H_analytical = utils.assemble_analytical_H(
     beta=beta,
     num_nodes=n_nodes,
@@ -202,6 +205,7 @@ P = utils.assemble_P(
     convection_bc_tags=convection_bc_tags,
 )
 
+# Assemble P analytically
 P_analytical = utils.assemble_analytical_P(
     beta=beta,
     T_ambient=T_ambient,
@@ -228,11 +232,25 @@ Q = utils.assemble_Q(
     convection_bc_tags=convection_bc_tags,
 )
 
+# Assemble Q analytically
 Q_analytical = utils.assemble_analytical_Q(
     q_hat=q_hat,
     num_nodes=n_nodes,
     nodeCoords=nodeCoords,
     convection_bc_tags=convection_bc_tags,
+)
+
+# Assemble C
+C = utils.assemble_C(
+    wts=wts_triangle,
+    xi_eta=xi_eta_triangle,
+    jac_func=jac_func_triangle,
+    shape_func_vals=shape_func_vals_triangle,
+    c1=c1,
+    num_elems=n_elems,
+    num_nodes=n_nodes,
+    elemNodeTags=elemNodeTags,
+    nodeCoords=nodeCoords,
 )
 
 # Check if f and f_analytical are close
@@ -241,28 +259,77 @@ if not np.allclose(Q, Q_analytical):
 else:
     print("PASSED ANALYTICAL TEST: Q")
 
+# * Steady State Simulation
+# u_steady = utils.steady_state_simulation(
+#     K.copy(),
+#     H.copy(),
+#     f.copy(),
+#     P.copy(),
+#     Q.copy(),
+#     n_nodes,
+#     dirichlet_bc_tags.copy(),
+#     u_hat,
+# )
+
+
 # Left hand side matrix
-LHS_matrix = K + H
-RHS_vector = f + P + Q
+# LHS_matrix = K + H
+# RHS_vector = f + P + Q
 
 # * Apply dirichlet boundary conditions
-K_global, b_global = utils.apply_dirichlet_bc(
-    K_global=LHS_matrix.copy(),
-    b_global=RHS_vector.copy(),
-    numNodes=n_nodes,
-    nodesBC=dirichlet_bc_tags,
+# K_global, b_global = utils.apply_dirichlet_bc(
+#     K_global=LHS_matrix.copy(),
+#     b_global=RHS_vector.copy(),
+#     numNodes=n_nodes,
+#     nodesBC=dirichlet_bc_tags,
+#     u_hat=u_hat,
+# )
+
+# * Solve the steady state problem
+# u = np.linalg.solve(K_global, b_global)
+
+# * Solve the transient simulation
+dt = 0.8e-3
+simulation_time = 1.0
+n_steps = int(simulation_time / dt)
+u0 = np.zeros(n_nodes) + T_ambient
+dirichlet_bc_tags_tmp = np.array(dirichlet_bc_tags.copy()) - 1
+u0[dirichlet_bc_tags_tmp] = u_hat
+alpha = 0.5
+u_transient = utils.time_march(
+    simulation_time=simulation_time,
+    n_steps=n_steps,
+    n_nodes=n_nodes,
+    alpha=alpha,
+    u0=u0,
+    C=C.copy(),
+    K=K.copy(),
+    H=H.copy(),
+    f=f.copy(),
+    Q=Q.copy(),
+    P=P.copy(),
+    dirichlet_bc_nodes=dirichlet_bc_tags,
     u_hat=u_hat,
 )
 
-# * Solve the steady state problem
-u = np.linalg.solve(K_global, b_global)
-
-# * Solve the transient simulation
 
 # * Visualize simulations
-plot_utils.contour_mpl(
+# plot_utils.contour_mpl(
+#     xyz_nodeCoords=nodeCoords.reshape(-1, 3),
+#     z=u_steady,
+#     fname="steady_state_simulation.jpg",
+#     flag_save=True,
+# )
+
+plot_utils.contour_mpl_animate(
     xyz_nodeCoords=nodeCoords.reshape(-1, 3),
-    z=u,
-    fname="steady_state_simulation.jpg",
-    flag_save=True,
+    u=u_transient,
 )
+
+# for i in range(0, n_steps):
+#     plot_utils.contour_mpl(
+#         xyz_nodeCoords=nodeCoords.reshape(-1, 3),
+#         z=u_transient[i, :],
+#         fname="transient_simulation.jpg",
+#         flag_save=False,
+#     )
