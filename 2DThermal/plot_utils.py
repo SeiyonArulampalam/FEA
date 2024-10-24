@@ -3,9 +3,12 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib import cm
 import matplotlib.tri as mtri
+import colorcet as cc
+
+plt.rcParams["text.usetex"] = True
 
 
-def contour_mpl(xyz_nodeCoords, z, fname="contour.jpg", flag=False):
+def contour_mpl(xyz_nodeCoords, z, fname="contour.jpg", flag_save=False):
     """
     Create a contour plot of the solution.
     """
@@ -19,8 +22,9 @@ def contour_mpl(xyz_nodeCoords, z, fname="contour.jpg", flag=False):
     tri = mtri.Triangulation(x, y)
 
     # Defin colormap
-    cmap = "coolwarm"
-
+    # cmap = "coolwarm"
+    # cmap = "hot"
+    cmap = cc.cm["fire"]
     # Plot solution
     fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 6))
     plot = ax.tricontourf(tri, z, levels=levels, cmap=cmap)
@@ -30,10 +34,13 @@ def contour_mpl(xyz_nodeCoords, z, fname="contour.jpg", flag=False):
         mpl.cm.ScalarMappable(norm=norm, cmap=cmap), ax=ax, location="right"
     )
 
+    cbar.ax.set_ylabel(r" $\mathbf{T ^\circ C}$", rotation=0, labelpad=15, ha="center")
+    cbar.ax.yaxis.set_label_coords(0.70, 1.05)  # Adjust x and y as needed
     cbar.set_ticks([min(z), (min(z) + max(z)) / 2.0, max(z)])
 
-    if flag == True:
-        plt.savefig(fname, dpi=800, edgecolor="none")
-
-    plt.show()
+    if flag_save == True:
+        dir = "/Users/seiyonarulampalam/git/FEA/2DThermal/Figures/"
+        plt.savefig(dir + fname, dpi=800, edgecolor="none")
+    else:
+        plt.show()
     return
