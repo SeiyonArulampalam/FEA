@@ -79,7 +79,7 @@ def reorder_node_tags(nodeTags):
     return nodeTags
 
 
-def generate_mesh(lenght=1.0, height=1.0, lc = 1.0, lc1 = 1.0, open_gmsh=True):
+def generate_mesh(lenght=1.0, height=1.0, lc=1.0, lc1=1.0, open_gmsh=True):
     """
     Generate the mesh for the finite element analysis
 
@@ -93,8 +93,6 @@ def generate_mesh(lenght=1.0, height=1.0, lc = 1.0, lc1 = 1.0, open_gmsh=True):
     gmsh.initialize()  # Start up GMSH api
 
     gmsh.model.add("geometry_gmsh")
-
-
 
     # Define the nodes that define the boundary
     gmsh.model.geo.addPoint(0.0, 0.0, 0, lc1, 0)
@@ -165,7 +163,6 @@ def Integrate_K_ij(
     xi_eta,
     jac_func,
     shape_func_derivatives,
-    shape_func_vals,
     x_vec,
     y_vec,
     a_xx,
@@ -173,6 +170,7 @@ def Integrate_K_ij(
     i,
     j,
 ):
+    """Numerical integration of local matrix K."""
     I = 0.0
     for k in range(len(wts)):
         weight = wts[k]  # quadrature weight
@@ -190,7 +188,18 @@ def Integrate_K_ij(
     return I
 
 
-def Integrate_H_ij(wts, xi_pts, shape_func_vals, jac_func, x_vec, y_vec, beta, i, j):
+def Integrate_H_ij(
+    wts,
+    xi_pts,
+    shape_func_vals,
+    jac_func,
+    x_vec,
+    y_vec,
+    beta,
+    i,
+    j,
+):
+    """Numerical integration of local matrix H"""
     I = 0.0
     for k in range(len(wts)):
         weight = wts[k]  # quadrature weight
@@ -202,7 +211,17 @@ def Integrate_H_ij(wts, xi_pts, shape_func_vals, jac_func, x_vec, y_vec, beta, i
     return I
 
 
-def Integrate_f_i(wts, xi_eta, jac_func, shape_func_vals, x_vec, y_vec, g_e, i):
+def Integrate_f_i(
+    wts,
+    xi_eta,
+    jac_func,
+    shape_func_vals,
+    x_vec,
+    y_vec,
+    g_e,
+    i,
+):
+    """Numerical integration of local element forcing vector f"""
     I = 0.0
     for k in range(len(wts)):
         weight = wts[k]  # quadrature weight
@@ -219,8 +238,17 @@ def Integrate_f_i(wts, xi_eta, jac_func, shape_func_vals, x_vec, y_vec, g_e, i):
 
 
 def Integrate_P_i(
-    wts, xi_pts, jac_func, shape_func_vals, x_vec, y_vec, beta, T_ambient, i
+    wts,
+    xi_pts,
+    jac_func,
+    shape_func_vals,
+    x_vec,
+    y_vec,
+    beta,
+    T_ambient,
+    i,
 ):
+    """Numerical interhation of local vector P"""
     I = 0.0
     for k in range(len(wts)):
         weight = wts[k]  # quadrature weight
@@ -232,7 +260,17 @@ def Integrate_P_i(
     return I
 
 
-def Integrate_Q_i(wts, xi_pts, jac_func, shape_func_vals, x_vec, y_vec, q_hat, i):
+def Integrate_Q_i(
+    wts,
+    xi_pts,
+    jac_func,
+    shape_func_vals,
+    x_vec,
+    y_vec,
+    q_hat,
+    i,
+):
+    """Numerical integration of local vector Q_i"""
     I = 0.0
     for k in range(len(wts)):
         weight = wts[k]  # quadrature weight
@@ -257,6 +295,7 @@ def assemble_K(
     elemNodeTags,
     nodeCoords,
 ):
+    """Assemble global K matrix."""
     K = np.zeros((num_nodes, num_nodes))
 
     for e in range(num_elems):
@@ -288,7 +327,6 @@ def assemble_K(
                     xi_eta=xi_eta,
                     jac_func=jac_func,
                     shape_func_derivatives=shape_func_derivatives,
-                    shape_func_vals=shape_func_vals,
                     x_vec=x_vec,
                     y_vec=y_vec,
                     a_xx=a_xx,
@@ -312,6 +350,7 @@ def assemble_analytical_K(
     elemNodeTags,
     nodeCoords,
 ):
+    """Assemble global K matrix using the anlytical equations."""
     K = np.zeros((num_nodes, num_nodes))
     for e in range(num_elems):
         # Extract each node for element 'e'.
@@ -365,6 +404,7 @@ def assemble_H(
     nodeCoords,
     convection_bc_tags,
 ):
+    """Assemble global H matrix using numerical integration."""
 
     H = np.zeros((num_nodes, num_nodes))
     n_line_segs = len(convection_bc_tags) - 1
@@ -415,6 +455,7 @@ def assemble_analytical_H(
     nodeCoords,
     convection_bc_tags,
 ):
+    """Assemble global H using analytical formualtion."""
     H = np.zeros((num_nodes, num_nodes))
     n_line_segs = len(convection_bc_tags) - 1
 
@@ -464,6 +505,7 @@ def assemble_f(
     elemNodeTags,
     nodeCoords,
 ):
+    """Assemble global f vector"""
     f = np.zeros(num_nodes)
     for e in range(num_elems):
         # Extract each node for element 'e'.
@@ -504,6 +546,7 @@ def assemble_f(
 
 
 def assemble_analytical_f(g, num_elems, num_nodes, elemNodeTags, nodeCoords):
+    """Assemble global f vector analytically."""
     f = np.zeros(num_nodes)
     for e in range(num_elems):
         # Extract each node for element 'e'.
@@ -545,6 +588,7 @@ def assemble_P(
     nodeCoords,
     convection_bc_tags,
 ):
+    """Assemble the global P vector."""
     n_line_segs = len(convection_bc_tags) - 1
     P = np.zeros(num_nodes)
     for segment_i in range(n_line_segs):
@@ -588,6 +632,7 @@ def assemble_analytical_P(
     nodeCoords,
     convection_bc_tags,
 ):
+    """Assemble global P vector analytically"""
     n_line_segs = len(convection_bc_tags) - 1
     P = np.zeros(num_nodes)
     for segment_i in range(n_line_segs):
@@ -623,6 +668,7 @@ def assemble_Q(
     nodeCoords,
     convection_bc_tags,
 ):
+    """Assemble global Q matrix using numerical integration"""
     n_line_segs = len(convection_bc_tags) - 1
 
     Q = np.zeros(num_nodes)
@@ -665,7 +711,7 @@ def assemble_analytical_Q(
     nodeCoords,
     convection_bc_tags,
 ):
-
+    """Assemble Q matrix analytically."""
     n_line_segs = len(convection_bc_tags) - 1
     Q = np.zeros(num_nodes)
     for segment_i in range(n_line_segs):
@@ -698,22 +744,20 @@ def apply_dirichlet_bc(K_global, b_global, numNodes, nodesBC, u_hat):
     Parameters
     ----------
         K_global : array
-            Unmodified stiffnes matrix
+            Unmodified left hand side matrix
         b_global : array
-            Forcing function vector
+            Unmodified right hand side vector
         nodesBC : array
             Vector of dirichlect BC node tags
-        numNodes : array
-            Total number of nodes (int)
-        p_i : float
-            The value at the specified BC node tags (double)
+        u_hat : float
+            The value at the specified BC node tags
 
     Returns
     -------
         K_global : array
-            modified stiffness matrix
+            modified LHS matrix
         b_gloabl : array
-            modified forcing vector
+            modified RHS vector
     """
     for i in range(len(nodesBC)):
         # loop through each node BC will be applied to
