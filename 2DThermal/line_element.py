@@ -60,6 +60,7 @@ def shape_func_vals(xi):
 
 
 def jac(x_vec, y_vec):
+    """The determinant of the jacobian is the length of the line segment"""
     x1 = x_vec[0]
     x2 = x_vec[1]
     y1 = y_vec[0]
