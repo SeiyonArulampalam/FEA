@@ -79,7 +79,7 @@ def reorder_node_tags(nodeTags):
     return nodeTags
 
 
-def generate_mesh(lenght=1.0, height=1.0, open_gmsh=True):
+def generate_mesh(lenght=1.0, height=1.0, lc = 1.0, lc1 = 1.0, open_gmsh=True):
     """
     Generate the mesh for the finite element analysis
 
@@ -94,9 +94,7 @@ def generate_mesh(lenght=1.0, height=1.0, open_gmsh=True):
 
     gmsh.model.add("geometry_gmsh")
 
-    # Define the mesh refinement at nodes
-    lc1 = 0.1e-1
-    lc = 0.1e-1
+
 
     # Define the nodes that define the boundary
     gmsh.model.geo.addPoint(0.0, 0.0, 0, lc1, 0)
