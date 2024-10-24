@@ -21,7 +21,7 @@ open_gmsh = False
 a_xx = 40.0  # Thermal conductivitty [W/mC]
 a_yy = 40.0  # Thermal conductivitty [W/mC]
 if apply_convection == True:
-    beta = 40.0  # Heat trasnf. coefficent [W/m^2 C]
+    beta = 75.0  # Heat trasnf. coefficent [W/m^2 C]
     q_hat = 0.0  # Heat flux on convection boundary
 else:
     beta = 0.0
@@ -64,25 +64,29 @@ print(f"{nodeTags_s4=}")
 
 n_elems = len(elemTags)
 n_nodes = len(nodeTags)
+print(f"\nNumber of elements:", n_elems)
+print(f"Number of nodes:", n_nodes)
 
 # * Define boundary condition node tags
 # Case 1
-# dirichlet_bc_tags = []
-# convection_bc_tags = []
-# dirichlet_bc_tags.extend(nodeTags_s1)
-# dirichlet_bc_tags.extend(nodeTags_s2)
-# dirichlet_bc_tags.extend(nodeTags_s3)
-# dirichlet_bc_tags.extend(nodeTags_s4)
+if apply_convection == False:
+    dirichlet_bc_tags = []
+    convection_bc_tags = []
+    dirichlet_bc_tags.extend(nodeTags_s1)
+    dirichlet_bc_tags.extend(nodeTags_s2)
+    dirichlet_bc_tags.extend(nodeTags_s3)
+    dirichlet_bc_tags.extend(nodeTags_s4)
 
 # Case 2
-dirichlet_bc_tags = []
-convection_bc_tags = []
-dirichlet_bc_tags = nodeTags_s1.copy()
-convection_bc_tags.extend(nodeTags_s2[:])
-convection_bc_tags.extend(nodeTags_s3[1:])
-convection_bc_tags.extend(nodeTags_s4[1:])
-print()
-print("Convection BC tags:", convection_bc_tags)
+elif apply_convection == True:
+    dirichlet_bc_tags = []
+    convection_bc_tags = []
+    dirichlet_bc_tags = nodeTags_s1.copy()
+    convection_bc_tags.extend(nodeTags_s2[:])
+    convection_bc_tags.extend(nodeTags_s3[1:])
+    convection_bc_tags.extend(nodeTags_s4[1:])
+
+print("\nConvection BC tags:", convection_bc_tags)
 print("Dirichlet BC tags:", dirichlet_bc_tags)
 
 # * Assemble FEA matrices
@@ -98,7 +102,6 @@ shape_func_vals_triangle = triangle_element.shape_func_vals
 # Define handles for numerical integration on line elements
 wts_line, xi_line = line_element.GaussOrder4()
 jac_func_line = line_element.jac
-# shape_func_derivatives_line = line_element.shape_func_derivatives
 shape_func_vals_line = line_element.shape_func_vals
 
 # Assemble K
@@ -260,6 +263,6 @@ u = np.linalg.solve(K_global, b_global)
 plot_utils.contour_mpl(
     xyz_nodeCoords=nodeCoords.reshape(-1, 3),
     z=u,
-    fname="contour.jpg",
-    flag=False,
+    fname="steady_state_simulation.jpg",
+    flag_save=True,
 )
