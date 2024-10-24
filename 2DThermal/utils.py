@@ -26,6 +26,10 @@ Convection BC:
 
 Key Coefficiencts:
 -----------------
+    c1 = rho*cp*A
+    rho = mass density
+    cp = specific heat at constant pressure
+    A = cross sectional area
     β = heat transfer coeff
     k = thermal conductivity
     g = internal excitation
@@ -156,6 +160,33 @@ def generate_mesh(lenght=1.0, height=1.0, lc=1.0, lc1=1.0, open_gmsh=True):
 
 ##############################################################################
 """Assemble the FEA matrices and vectors."""
+
+
+def Integrate_C_ij(
+    wts,
+    xi_eta,
+    jac_func,
+    shape_func_vals,
+    x_vec,
+    y_vec,
+    c1,
+    i,
+    j,
+):
+    """Numerically integrate the local consistent (mass) matrix."""
+    I = 0.0
+    for k in range(len(wts)):
+        weight = wts[k]
+        xi = xi_eta[k][0]
+        eta = xi_eta[k][1]
+        jacobian = jac_func(x_vec, y_vec)
+        Ni = shape_func_vals(xi, eta)
+        detJ = np.linalg.det(jacobian)
+        if detJ <= 0:
+            raise ValueError("Integrate C: detJ <= 0")
+        comp1 = c1 * Ni[i] * Ni[j]
+        I += weight * comp1 * detJ
+    return I
 
 
 def Integrate_K_ij(
@@ -338,7 +369,6 @@ def assemble_K(
                 n_row_e = int(elemNodeTags[3 * e + i] - 1)  # Global row index
                 n_col_e = int(elemNodeTags[3 * e + j] - 1)  # Global col index
                 K[n_row_e, n_col_e] += K_local[i, j]  # Update global K
-
     return K
 
 
@@ -658,6 +688,60 @@ def assemble_analytical_P(
     return P
 
 
+def assemble_C(
+    wts,
+    xi_eta,
+    jac_func,
+    shape_func_vals,
+    c1,
+    num_elems,
+    num_nodes,
+    elemNodeTags,
+    nodeCoords,
+):
+    """Assemble the global C matrix"""
+    C = np.zeros((num_nodes, num_nodes))
+
+    for e in range(num_elems):
+        # Extract each node for element 'e'.
+        # Subtract one for zero indexed node
+        n1 = int(elemNodeTags[e * 3] - 1)
+        n2 = int(elemNodeTags[e * 3 + 1] - 1)
+        n3 = int(elemNodeTags[e * 3 + 2] - 1)
+
+        # Determine the x-y coordinates of each node
+        n1_x = nodeCoords[n1 * 3]
+        n1_y = nodeCoords[n1 * 3 + 1]
+        n2_x = nodeCoords[n2 * 3]
+        n2_y = nodeCoords[n2 * 3 + 1]
+        n3_x = nodeCoords[n3 * 3]
+        n3_y = nodeCoords[n3 * 3 + 1]
+
+        # Define the x_vec and y_vec
+        x_vec = np.array([n1_x, n2_x, n3_x])
+        y_vec = np.array([n1_y, n2_y, n3_y])
+
+        # Initialize K_local
+        C_local = np.zeros((3, 3))
+        for i in range(3):
+            for j in range(3):
+                C_local[i, j] = Integrate_C_ij(
+                    wts=wts,
+                    xi_eta=xi_eta,
+                    jac_func=jac_func,
+                    shape_func_vals=shape_func_vals,
+                    x_vec=x_vec,
+                    y_vec=y_vec,
+                    c1=c1,
+                    i=i,
+                    j=j,
+                )
+                n_row_e = int(elemNodeTags[3 * e + i] - 1)  # Global row index
+                n_col_e = int(elemNodeTags[3 * e + j] - 1)  # Global col index
+                C[n_row_e, n_col_e] += C_local[i, j]
+    return C
+
+
 def assemble_Q(
     wts,
     xi_pts,
@@ -773,3 +857,82 @@ def apply_dirichlet_bc(K_global, b_global, numNodes, nodesBC, u_hat):
                 K_global[nd_i, j] = 0.0
                 K_global[j, nd_i] = 0.0
     return K_global, b_global
+
+
+def steady_state_simulation(K, H, f, P, Q, num_nodes, dirichlet_bc_tags, u_hat):
+    LHS_matrix = K + H
+    RHS_vector = f + P + Q
+    K_global, b_global = apply_dirichlet_bc(
+        K_global=LHS_matrix.copy(),
+        b_global=RHS_vector.copy(),
+        numNodes=num_nodes,
+        nodesBC=dirichlet_bc_tags,
+        u_hat=u_hat,
+    )
+    u = np.linalg.solve(K_global, b_global)
+    return u
+
+
+def time_march(
+    simulation_time,
+    n_steps,
+    n_nodes,
+    alpha,
+    u0,
+    C,
+    K,
+    H,
+    f,
+    Q,
+    P,
+    dirichlet_bc_nodes,
+    u_hat,
+):
+    # Compute time step increment
+    dt = simulation_time / n_steps
+    print(f"{dt=} s")
+
+    # Initialize solution container
+    u = np.zeros((n_steps, n_nodes))
+
+    # Update solution container with solution at t=0s
+    u[0, :] = u0
+
+    # Compute the time step coefficients
+    a1 = alpha * dt
+    a2 = (1.0 - alpha) * dt
+
+    # Compute total stiffness matrix
+    K_bar_base = K.copy() + H.copy()
+
+    # Define the fully discritized model
+    # K_bar_base = C.copy() - a2 * K_T.copy()
+    K_hat_base = C.copy() + a1 * K_bar_base
+
+    # Compute F_s and F_s+1
+    F_base = f.copy() + Q.copy() + P.copy()
+
+    for i in range(1, n_steps):
+
+        K_bar = K_bar_base.copy()
+        K_hat = K_hat_base.copy()
+        F = F_base.copy()
+
+        u_prev = u[i - 1, :]  # Extract the previous time-step solution
+        F_hat = ((C.copy() - a2 * K_bar) @ u_prev) + (a1 * F + a2 * F)
+
+        # Apply dirichlet BC to the system
+        mat, vec = apply_dirichlet_bc(
+            K_hat.copy(),
+            F_hat.copy(),
+            n_nodes,
+            dirichlet_bc_nodes,
+            u_hat,
+        )
+
+        # Compute new solution
+        u_new = np.linalg.solve(mat, vec)
+        u[i, :] = u_new
+
+    # print(u[:, 20])
+    return u
