@@ -18,11 +18,11 @@ apply_convection = True
 open_gmsh = False
 
 # * Define model parameters
-a_xx = 5.0  # Thermal conductivitty [W/mC]
-a_yy = 5.0  # Thermal conductivitty [W/mC]
+a_xx = 40.0  # Thermal conductivitty [W/mC]
+a_yy = 40.0  # Thermal conductivitty [W/mC]
 if apply_convection == True:
-    beta = 4.0  # Heat trasnf. coefficent [W/m^2 C]
-    q_hat = 10.0  # Heat flux on convection boundary
+    beta = 40.0  # Heat trasnf. coefficent [W/m^2 C]
+    q_hat = 0.0  # Heat flux on convection boundary
 else:
     beta = 0.0
     q_hat = 0.0  # Heat flux on convection boundary
@@ -31,9 +31,17 @@ u_hat = 300.0  # Temperature on dirichlet boundary [C]
 
 
 # * Generate the mesh
-height = 1  # Length of analysis domain [m]
-length = 1  # Hieght of analysis domain [m]
-mesh_info = utils.generate_mesh(lenght=length, height=height, open_gmsh=open_gmsh)
+height = 1.0  # Length of analysis domain [m]
+length = 1.0  # Height analysis domain [m]
+lc1 = 0.3e-1  # Mesh refinement of nodes on base
+lc = 0.8e-1  # Mesh refinement of nodes on top edge
+mesh_info = utils.generate_mesh(
+    lenght=length,
+    height=height,
+    open_gmsh=open_gmsh,
+    lc=lc,
+    lc1=lc1,
+)
 
 # Extract the variables from the dictionary
 print()
@@ -252,7 +260,6 @@ u = np.linalg.solve(K_global, b_global)
 plot_utils.contour_mpl(
     xyz_nodeCoords=nodeCoords.reshape(-1, 3),
     z=u,
-    title="fig",
     fname="contour.jpg",
     flag=False,
 )
