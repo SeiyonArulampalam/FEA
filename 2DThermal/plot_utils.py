@@ -48,7 +48,7 @@ def contour_mpl(xyz_nodeCoords, z, fname="contour.jpg", flag_save=False):
 
 
 def contour_mpl_animate(
-    xyz_nodeCoords, u, dt, max_rel_err, fname="contour_animation.mp4", flag_save=False
+    xyz_nodeCoords, u, dt, max_rel_err, fname="contour_animation.gif", flag_save=False
 ):
     """
     Create an animated contour plot using rows of u for each frame.
@@ -105,6 +105,8 @@ def contour_mpl_animate(
 
     # Save or show the animation
     if flag_save:
-        ani.save(fname, writer="ffmpeg")
+        dir = "/Users/seiyonarulampalam/git/FEA/2DThermal/Figures/"
+        ani.save(dir + fname, writer="pillow")
+        print("\nGIF animation has sucessfully been created.")
     else:
         plt.show()
