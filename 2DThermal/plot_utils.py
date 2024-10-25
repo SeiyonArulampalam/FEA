@@ -25,8 +25,8 @@ def contour_mpl(xyz_nodeCoords, z, fname="contour.jpg", flag_save=False):
     # Define colormap
     # cmap = "coolwarm"
     # cmap = "hot"
-    # cmap = cc.cm["fire"]
     cmap = cc.cm["fire"]
+    # cmap = cc.cm["fire"]
 
     # Plot solution
     fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 6))
@@ -81,6 +81,7 @@ def contour_mpl_animate(
     levels = np.linspace(min_u, max_u, 30)
     cmap = cc.cm["fire"]
     plot = ax.tricontourf(tri, u[0, :], levels=levels, cmap=cmap)
+    plt.axis("equal")
 
     # Function to update the plot for each frame
     def update(frame):
@@ -90,6 +91,7 @@ def contour_mpl_animate(
         plot = ax.tricontourf(
             tri, u[frame, :], levels=levels, cmap=cmap
         )  # Redraw the new contours
+        plt.axis("equal")
 
     # Create the animation
     ani = animation.FuncAnimation(fig, update, frames=n_steps, repeat=False)
