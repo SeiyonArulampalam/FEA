@@ -913,6 +913,7 @@ def time_march(
     F_base = f.copy() + Q.copy() + P.copy()
 
     for i in range(1, n_steps):
+        print(f"Step {i}")
 
         K_bar = K_bar_base.copy()
         K_hat = K_hat_base.copy()
