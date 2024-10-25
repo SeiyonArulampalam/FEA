@@ -13,7 +13,8 @@ def contour_mpl(xyz_nodeCoords, z, fname="contour.jpg", flag_save=False):
     """
     Create a contour plot of the solution.
     """
-    min_level = min(z)
+    T_ambient = 20  # Define the ambient temperature
+    min_level = T_ambient
     max_level = max(z)
     levels = np.linspace(min_level, max_level, 30)
     x = xyz_nodeCoords[:, 0]
@@ -23,10 +24,7 @@ def contour_mpl(xyz_nodeCoords, z, fname="contour.jpg", flag_save=False):
     tri = mtri.Triangulation(x, y)
 
     # Define colormap
-    # cmap = "coolwarm"
-    # cmap = "hot"
     cmap = cc.cm["fire"]
-    # cmap = cc.cm["fire"]
 
     # Plot solution
     fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 6))
@@ -39,7 +37,7 @@ def contour_mpl(xyz_nodeCoords, z, fname="contour.jpg", flag_save=False):
 
     cbar.ax.set_ylabel(r" $\mathbf{T ^\circ C}$", rotation=0, labelpad=15, ha="center")
     cbar.ax.yaxis.set_label_coords(0.70, 1.05)  # Adjust x and y as needed
-    cbar.set_ticks([min(z), (min(z) + max(z)) / 2.0, max(z)])
+    cbar.set_ticks([T_ambient, (max(z) + T_ambient) * 0.5, max(z)])
 
     if flag_save == True:
         dir = "/Users/seiyonarulampalam/git/FEA/2DThermal/Figures/"
@@ -50,22 +48,13 @@ def contour_mpl(xyz_nodeCoords, z, fname="contour.jpg", flag_save=False):
 
 
 def contour_mpl_animate(
-    xyz_nodeCoords, u, max_rel_err, fname="contour_animation.mp4", flag_save=False
+    xyz_nodeCoords, u, dt, max_rel_err, fname="contour_animation.mp4", flag_save=False
 ):
     """
     Create an animated contour plot using rows of u for each frame.
-
-    Parameters:
-    xyz_nodeCoords : np.ndarray
-        Coordinates of the nodes (x, y).
-    u : np.ndarray
-        Solution matrix where each row represents a frame (n_steps, n_nodes).
-    fname : str
-        Filename to save the animation.
-    flag_save : bool
-        Whether to save the animation to file.
     """
     n_steps, n_nodes = u.shape
+    T_ambient = 20  # Define the ambient temperature
     x = xyz_nodeCoords[:, 0]
     y = xyz_nodeCoords[:, 1]
 
@@ -83,6 +72,15 @@ def contour_mpl_animate(
     plot = ax.tricontourf(tri, u[0, :], levels=levels, cmap=cmap)
     plt.axis("equal")
     ax.set_title(f"Max Percent Error at Final Time Step: {max_rel_err:.2e}")
+    ax.set_axis_off()
+    norm = mpl.colors.Normalize(vmin=min_u, vmax=max_u)
+    cbar = fig.colorbar(
+        mpl.cm.ScalarMappable(norm=norm, cmap=cmap), ax=ax, location="right"
+    )
+
+    cbar.ax.set_ylabel(r" $\mathbf{T ^\circ C}$", rotation=0, labelpad=15, ha="center")
+    cbar.ax.yaxis.set_label_coords(0.70, 1.05)  # Adjust x and y as needed
+    cbar.set_ticks([min_u, (min_u + max_u) / 2.0, max_u])
 
     # Function to update the plot for each frame
     def update(frame):
@@ -90,12 +88,20 @@ def contour_mpl_animate(
         for collection in plot.collections:
             collection.remove()  # Remove old contours
         plot = ax.tricontourf(
-            tri, u[frame, :], levels=levels, cmap=cmap
+            tri,
+            u[frame, :],
+            levels=levels,
+            cmap=cmap,
         )  # Redraw the new contours
+        ax.set_title(
+            f"Max Percent Error at Final Time Step: {max_rel_err:.2e}, time = {dt*frame:.1e}s"
+        )
+        ax.set_axis_off()
         plt.axis("equal")
 
     # Create the animation
-    ani = animation.FuncAnimation(fig, update, frames=n_steps, repeat=False)
+    n_frames = 20  # Specify the number of frames to animate
+    ani = animation.FuncAnimation(fig, update, frames=n_frames, repeat=True)
 
     # Save or show the animation
     if flag_save:
