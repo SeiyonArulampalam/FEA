@@ -14,7 +14,7 @@ np.set_printoptions(precision=4)
 
 """Run the 2D heat trasnfer simulation"""
 # * Flags
-apply_convection = False
+apply_convection = True 
 open_gmsh = False
 
 # * Define model parameters
@@ -33,8 +33,8 @@ c1 = 1.0
 # * Generate the mesh
 height = 1.0  # Length of analysis domain [m]
 length = 1.0  # Height analysis domain [m]
-lc1 = 1.0e-1  # Mesh refinement of nodes on base
-lc = 1e-1  # Mesh refinement of nodes on top edge
+lc1 = 0.6e-1  # Mesh refinement of nodes on base
+lc = 0.6e-1  # Mesh refinement of nodes on top edge
 mesh_info = utils.generate_mesh(
     lenght=length,
     height=height,
@@ -280,7 +280,7 @@ u_steady = utils.steady_state_simulation(
 
 # * Solve the transient simulation
 dt = 0.8e-3
-simulation_time = 0.1
+simulation_time = 0.5
 n_steps = int(simulation_time / dt)
 print(f"\nnum of step = {n_steps}")
 dirichlet_bc_tags_tmp = np.array(dirichlet_bc_tags.copy()) - 1
@@ -329,4 +329,6 @@ plot_utils.contour_mpl(
 plot_utils.contour_mpl_animate(
     xyz_nodeCoords=nodeCoords.reshape(-1, 3),
     u=u_transient,
+    flag_save=False,
+    max_rel_err=max(rel_err),
 )

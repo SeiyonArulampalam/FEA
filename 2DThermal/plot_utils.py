@@ -50,7 +50,7 @@ def contour_mpl(xyz_nodeCoords, z, fname="contour.jpg", flag_save=False):
 
 
 def contour_mpl_animate(
-    xyz_nodeCoords, u, fname="contour_animation.mp4", flag_save=False
+    xyz_nodeCoords, u, max_rel_err, fname="contour_animation.mp4", flag_save=False
 ):
     """
     Create an animated contour plot using rows of u for each frame.
@@ -82,6 +82,7 @@ def contour_mpl_animate(
     cmap = cc.cm["fire"]
     plot = ax.tricontourf(tri, u[0, :], levels=levels, cmap=cmap)
     plt.axis("equal")
+    ax.set_title(f"Max Percent Error at Final Time Step: {max_rel_err:.2e}")
 
     # Function to update the plot for each frame
     def update(frame):
