@@ -14,7 +14,7 @@ np.set_printoptions(precision=4)
 
 """Run the 2D heat transfer simulation"""
 # * Flags
-apply_convection = False 
+apply_convection = False
 open_gmsh = False
 
 # * Define model parameters
@@ -323,8 +323,10 @@ if max(rel_err) > 1.0:
 # * Visualize simulations
 if apply_convection == True:
     fname = "steady_state_simulation_convection.jpg"
+    fname_anim = "steady_state_simulation_convection.gif"
 elif apply_convection == False:
     fname = "steady_state_simulation_dirichlet.jpg"
+    fname_anim = "steady_state_simulation_dirichlet.gif"
 plot_utils.contour_mpl(
     xyz_nodeCoords=nodeCoords.reshape(-1, 3),
     z=u_steady,
@@ -336,6 +338,7 @@ plot_utils.contour_mpl_animate(
     xyz_nodeCoords=nodeCoords.reshape(-1, 3),
     u=u_transient,
     dt=dt,
-    flag_save=False,
+    flag_save=True,
     max_rel_err=max(rel_err),
+    fname=fname_anim,
 )
