@@ -12,20 +12,22 @@ import line_element
 # Specify the precision of the print statement
 np.set_printoptions(precision=4)
 
-"""Run the 2D heat trasnfer simulation"""
+"""Run the 2D heat transfer simulation"""
 # * Flags
-apply_convection = True 
+apply_convection = False 
 open_gmsh = False
 
 # * Define model parameters
-a_xx = 40.0  # Thermal conductivitty [W/mC]
+a_xx = 10.0  # Thermal conductivitty [W/mC]
 a_yy = 40.0  # Thermal conductivitty [W/mC]
+
 if apply_convection == True:
     beta = 75.0  # Heat trasnf. coefficent [W/m^2 C]
     q_hat = 0.0  # Heat flux on convection boundary
 else:
-    beta = 0.0
+    beta = 0.0  # Heat trasnf. coefficent [W/m^2 C]
     q_hat = 0.0  # Heat flux on convection boundary
+
 T_ambient = 20.0  # Ambient temperature [C]
 u_hat = 300.0  # Temperature on dirichlet boundary [C]
 c1 = 1.0
@@ -93,9 +95,9 @@ print("Dirichlet BC tags:", dirichlet_bc_tags)
 # * Assemble FEA matrices
 # Define excitation for each element
 if apply_convection == True:
-    g = np.zeros(n_elems)
+    g = np.zeros(n_elems) + 1e1
 else:
-    g = np.zeros(n_elems) + 100.0
+    g = np.zeros(n_elems) + 1e2
 
 # Define handles for numerical integration on triangle elements
 wts_triangle, xi_eta_triangle = triangle_element.GaussOrder3()
@@ -279,11 +281,15 @@ u_steady = utils.steady_state_simulation(
 )
 
 # * Solve the transient simulation
-dt = 0.8e-3
-simulation_time = 0.5
-n_steps = int(simulation_time / dt)
+dt = 1e-3  # Simulation time step (s)
+simulation_time = 0.1  # Total simulation time (s)
+n_steps = int(simulation_time / dt)  # Number of time steps
 print(f"\nnum of step = {n_steps}")
+
+# Modify dirichlet tags to zero based indexing
 dirichlet_bc_tags_tmp = np.array(dirichlet_bc_tags.copy()) - 1
+
+# Set solution at t=0 equal to the ambient temprature
 u0 = np.zeros(n_nodes) + T_ambient
 if apply_convection == True:
     u0[dirichlet_bc_tags_tmp] = T_ambient
@@ -329,6 +335,7 @@ plot_utils.contour_mpl(
 plot_utils.contour_mpl_animate(
     xyz_nodeCoords=nodeCoords.reshape(-1, 3),
     u=u_transient,
+    dt=dt,
     flag_save=False,
     max_rel_err=max(rel_err),
 )
