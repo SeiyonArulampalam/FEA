@@ -14,7 +14,7 @@ np.set_printoptions(precision=4)
 
 """Run the 2D heat trasnfer simulation"""
 # * Flags
-apply_convection = True
+apply_convection = False
 open_gmsh = False
 
 # * Define model parameters
@@ -33,7 +33,7 @@ c1 = 1.0
 # * Generate the mesh
 height = 1.0  # Length of analysis domain [m]
 length = 1.0  # Height analysis domain [m]
-lc1 = 0.6e-1  # Mesh refinement of nodes on base
+lc1 = 1.0e-1  # Mesh refinement of nodes on base
 lc = 1e-1  # Mesh refinement of nodes on top edge
 mesh_info = utils.generate_mesh(
     lenght=length,
@@ -92,7 +92,10 @@ print("Dirichlet BC tags:", dirichlet_bc_tags)
 
 # * Assemble FEA matrices
 # Define excitation for each element
-g = np.zeros(n_elems) + 100
+if apply_convection == True:
+    g = np.zeros(n_elems)
+else:
+    g = np.zeros(n_elems) + 100.0
 
 # Define handles for numerical integration on triangle elements
 wts_triangle, xi_eta_triangle = triangle_element.GaussOrder3()
@@ -260,41 +263,33 @@ else:
     print("PASSED ANALYTICAL TEST: Q")
 
 # * Steady State Simulation
-# u_steady = utils.steady_state_simulation(
-#     K.copy(),
-#     H.copy(),
-#     f.copy(),
-#     P.copy(),
-#     Q.copy(),
-#     n_nodes,
-#     dirichlet_bc_tags.copy(),
-#     u_hat,
-# )
-
-
-# Left hand side matrix
-# LHS_matrix = K + H
-# RHS_vector = f + P + Q
-
-# * Apply dirichlet boundary conditions
-# K_global, b_global = utils.apply_dirichlet_bc(
-#     K_global=LHS_matrix.copy(),
-#     b_global=RHS_vector.copy(),
-#     numNodes=n_nodes,
-#     nodesBC=dirichlet_bc_tags,
-#     u_hat=u_hat,
-# )
-
-# * Solve the steady state problem
-# u = np.linalg.solve(K_global, b_global)
+if apply_convection == True:
+    dirichlet_val = u_hat
+elif apply_convection == False:
+    dirichlet_val = T_ambient
+u_steady = utils.steady_state_simulation(
+    K.copy(),
+    H.copy(),
+    f.copy(),
+    P.copy(),
+    Q.copy(),
+    n_nodes,
+    dirichlet_bc_tags.copy(),
+    dirichlet_val,
+)
 
 # * Solve the transient simulation
 dt = 0.8e-3
-simulation_time = 1.0
+simulation_time = 0.1
 n_steps = int(simulation_time / dt)
-u0 = np.zeros(n_nodes) + T_ambient
+print(f"\nnum of step = {n_steps}")
 dirichlet_bc_tags_tmp = np.array(dirichlet_bc_tags.copy()) - 1
-u0[dirichlet_bc_tags_tmp] = u_hat
+u0 = np.zeros(n_nodes) + T_ambient
+if apply_convection == True:
+    u0[dirichlet_bc_tags_tmp] = T_ambient
+elif apply_convection == False:
+    u_hat = T_ambient
+
 alpha = 0.5
 u_transient = utils.time_march(
     simulation_time=simulation_time,
@@ -312,24 +307,26 @@ u_transient = utils.time_march(
     u_hat=u_hat,
 )
 
+# * Compute relative error from steady state and final transient simulation
+rel_err = np.divide(u_steady - u_transient[-1, :], u_steady) * 100
+print("\nMax Rel. Err % =", max(rel_err))
+
+if max(rel_err) > 1.0:
+    raise ValueError("Relative Error of steady state and transient is greater than 1%")
 
 # * Visualize simulations
-# plot_utils.contour_mpl(
-#     xyz_nodeCoords=nodeCoords.reshape(-1, 3),
-#     z=u_steady,
-#     fname="steady_state_simulation.jpg",
-#     flag_save=True,
-# )
+if apply_convection == True:
+    fname = "steady_state_simulation_convection.jpg"
+elif apply_convection == False:
+    fname = "steady_state_simulation_dirichlet.jpg"
+plot_utils.contour_mpl(
+    xyz_nodeCoords=nodeCoords.reshape(-1, 3),
+    z=u_steady,
+    fname=fname,
+    flag_save=True,
+)
 
 plot_utils.contour_mpl_animate(
     xyz_nodeCoords=nodeCoords.reshape(-1, 3),
     u=u_transient,
 )
-
-# for i in range(0, n_steps):
-#     plot_utils.contour_mpl(
-#         xyz_nodeCoords=nodeCoords.reshape(-1, 3),
-#         z=u_transient[i, :],
-#         fname="transient_simulation.jpg",
-#         flag_save=False,
-#     )
