@@ -14,7 +14,7 @@ np.set_printoptions(precision=4)
 
 """Run the 2D heat transfer simulation"""
 # * Flags
-apply_convection = False
+apply_convection = True
 open_gmsh = False
 
 # * Define model parameters
@@ -35,8 +35,8 @@ c1 = 1.0
 # * Generate the mesh
 height = 1.0  # Length of analysis domain [m]
 length = 1.0  # Height analysis domain [m]
-lc1 = 0.6e-1  # Mesh refinement of nodes on base
-lc = 0.6e-1  # Mesh refinement of nodes on top edge
+lc1 = 0.2e-1  # Mesh refinement of nodes on base
+lc = 0.4e-1  # Mesh refinement of nodes on top edge
 mesh_info = utils.generate_mesh(
     lenght=length,
     height=height,
@@ -282,7 +282,7 @@ u_steady = utils.steady_state_simulation(
 
 # * Solve the transient simulation
 dt = 1e-3  # Simulation time step (s)
-simulation_time = 0.1  # Total simulation time (s)
+simulation_time = 0.05  # Total simulation time (s)
 n_steps = int(simulation_time / dt)  # Number of time steps
 print(f"\nnum of step = {n_steps}")
 
@@ -327,6 +327,7 @@ if apply_convection == True:
 elif apply_convection == False:
     fname = "steady_state_simulation_dirichlet.jpg"
     fname_anim = "steady_state_simulation_dirichlet.gif"
+
 plot_utils.contour_mpl(
     xyz_nodeCoords=nodeCoords.reshape(-1, 3),
     z=u_steady,
@@ -334,11 +335,19 @@ plot_utils.contour_mpl(
     flag_save=True,
 )
 
+if apply_convection == True:
+    plot_utils.plot_transient_node_temperature_convection(
+        u_steady,
+        u_transient,
+        simulation_time,
+        n_steps,
+    )
+
 plot_utils.contour_mpl_animate(
     xyz_nodeCoords=nodeCoords.reshape(-1, 3),
     u=u_transient,
     dt=dt,
-    flag_save=True,
+    flag_save=False,
     max_rel_err=max(rel_err),
     fname=fname_anim,
 )
