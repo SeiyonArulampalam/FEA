@@ -110,3 +110,22 @@ def contour_mpl_animate(
         print("\nGIF animation has sucessfully been created.")
     else:
         plt.show()
+
+
+def plot_transient_node_temperature_convection(
+    u_steady,
+    u_transient,
+    simulation_time,
+    n_steps,
+):
+    """Plot the time history of the temperature of a node in the convection simulation"""
+    node = 3
+    time = np.linspace(0, simulation_time, n_steps)
+    fig, ax = plt.subplots()
+    ax.set_title("Top left corner temperature time history")
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel("Temp. (C)")
+    ax.plot([time[0], time[-1]], [u_steady[node], u_steady[node]], "k--", label="FEA")
+    ax.plot(time, u_transient[:, node], "r-")
+    dir = "/Users/seiyonarulampalam/git/FEA/2DThermal/Figures/"
+    plt.savefig(dir + "time_history.jpg", dpi=800)
